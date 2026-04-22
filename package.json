@@ -10,10 +10,15 @@
   "scripts": {
     "dev:add": "tsx src/cli/addRecord.ts",
     "dev:import-csv": "tsx src/cli/importCsv.ts",
+    "dev:fetch-mypage": "tsx src/cli/fetchMyPage.ts",
     "dev:summary": "tsx src/cli/showSummary.ts",
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
+    "cheerio": "^1.2.0",
+    "dotenv": "^16.6.1",
+    "playwright": "^1.53.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {

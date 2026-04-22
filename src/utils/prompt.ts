@@ -11,3 +11,12 @@ export async function ask(label: string, defaultValue = ""): Promise<string> {
     rl.close();
   }
 }
+
+export async function waitForEnter(message: string): Promise<void> {
+  const rl = readline.createInterface({ input, output });
+  try {
+    await rl.question(`${message}\n`);
+  } finally {
+    rl.close();
+  }
+}
