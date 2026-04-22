@@ -9,6 +9,7 @@ async function main(): Promise<void> {
       date: await ask("date", today),
       studio: await ask("studio"),
       program: await ask("program"),
+      instructorName: await ask("instructorName"),
       startTime: await ask("startTime", "19:30"),
       intensity: await ask("intensity"),
       subjectiveMemo: await ask("subjectiveMemo"),

@@ -5,6 +5,7 @@ export function normalizeWorkoutInput(input: WorkoutInput, createdAt: string) {
   const date = value.date.replace(/\//g, "-");
   const studio = normalizeText(value.studio);
   const program = normalizeText(value.program);
+  const instructorName = normalizeText(value.instructorName ?? "");
   const timeMatch = value.startTime.match(/^(\d{1,2}):(\d{2})$/);
   if (!timeMatch?.[1] || !timeMatch[2]) {
     throw new Error(`Invalid time: ${value.startTime}`);
@@ -12,10 +13,11 @@ export function normalizeWorkoutInput(input: WorkoutInput, createdAt: string) {
   const startTime = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
 
   return workoutRecordSchema.parse({
-    id: `feelcycle:${date}:${startTime}:${normalizeKey(program)}`,
+    id: `feelcycle:${date}:${startTime}:${normalizeKey(studio)}:${normalizeKey(program)}`,
     date,
     studio,
     program,
+    instructorName,
     startTime,
     intensity: value.intensity?.trim() ?? "",
     subjectiveMemo: value.subjectiveMemo?.trim() ?? "",

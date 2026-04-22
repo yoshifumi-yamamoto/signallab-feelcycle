@@ -18,6 +18,7 @@ export async function importWorkoutCsv(filePath: string): Promise<WorkoutInput[]
       date: row.date ?? "",
       studio: row.studio ?? "",
       program: row.program ?? "",
+      instructorName: row.instructorName ?? "",
       startTime: row.startTime ?? "",
       intensity: row.intensity ?? "",
       subjectiveMemo: row.subjectiveMemo ?? "",

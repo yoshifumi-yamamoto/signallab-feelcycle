@@ -24,6 +24,7 @@ export class SupabaseWorkoutRepository {
         workout_date: record.date,
         studio: record.studio,
         program: record.program,
+        instructor_name: record.instructorName || null,
         start_time: record.startTime,
         intensity: record.intensity || null,
         subjective_memo: record.subjectiveMemo,

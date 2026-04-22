@@ -18,6 +18,7 @@ export function parseWorkoutHistory(html: string): WorkoutInput[] {
     const dateText = clean(root.find(".text_bold_500").first().text());
     const timeText = clean(root.find(".text_bold_500.mb05").first().text());
     const programText = clean(root.find(".underline").first().text());
+    const instructorText = clean(root.find(".instructor").first().text());
     const studioText = clean(root.find(".tenpo").first().text()).replace(/^＠/, "");
 
     const dateMatch = dateText.match(/(\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/);
@@ -27,6 +28,7 @@ export function parseWorkoutHistory(html: string): WorkoutInput[] {
       date: dateMatch?.[1] ?? "",
       studio: studioText || extractTextAfterKeyword(text, ["店", "studio"]) || `unknown-${index}`,
       program: programText || extractProgram(text),
+      instructorName: instructorText,
       startTime: timeMatch?.[1] ?? "00:00",
       intensity: "",
       subjectiveMemo: "",
