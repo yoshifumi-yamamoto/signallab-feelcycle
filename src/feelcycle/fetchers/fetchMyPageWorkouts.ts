@@ -9,6 +9,7 @@ export interface MonthlyHistorySnapshot {
 interface HistoryViewState {
   monthLabel: string;
   firstRowKey: string;
+  recordCount: number;
 }
 
 export async function fetchMyPageWorkouts(): Promise<MonthlyHistorySnapshot[]> {
@@ -79,6 +80,11 @@ async function collectHistoryPages(
       html: await page.content()
     });
 
+    if (state.recordCount === 0) {
+      console.info("[feelcycle] reached empty month, stopping history traversal");
+      break;
+    }
+
     const moved = await goToPreviousMonth(page, state);
     if (!moved) {
       console.info("[feelcycle] no older month available");
@@ -124,10 +130,15 @@ async function readCurrentState(page: import("playwright").Page): Promise<Histor
     .first()
     .textContent()
     .catch(() => null);
+  const recordCount = await page
+    .locator(".box_wrap.box-4")
+    .evaluateAll((elements) => elements.filter((element) => !element.className.includes("box_header")).length)
+    .catch(() => 0);
 
   return {
     monthLabel,
-    firstRowKey: (firstRowKey ?? "").replace(/\s+/g, " ").trim()
+    firstRowKey: (firstRowKey ?? "").replace(/\s+/g, " ").trim(),
+    recordCount
   };
 }
 
