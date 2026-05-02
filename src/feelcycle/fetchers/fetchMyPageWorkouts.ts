@@ -17,7 +17,7 @@ export async function fetchMyPageWorkouts(): Promise<MonthlyHistorySnapshot[]> {
     throw new Error("FEELCYCLE_HISTORY_URL is required");
   }
 
-  const { context, page } = await createLoggedInContext();
+  const { browser, context, page } = await createLoggedInContext();
 
   try {
     await openHistoryPage(page);
@@ -25,6 +25,7 @@ export async function fetchMyPageWorkouts(): Promise<MonthlyHistorySnapshot[]> {
     return await collectHistoryPages(page, env.feelcycleHistoryMonths);
   } finally {
     await context.close();
+    await browser.close();
   }
 }
 

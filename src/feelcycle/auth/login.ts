@@ -1,9 +1,9 @@
-import { chromium, type BrowserContext, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 
 import { env } from "../../config/env.js";
 import { waitForEnter } from "../../utils/prompt.js";
 
-export async function createLoggedInContext(): Promise<{ context: BrowserContext; page: Page }> {
+export async function createLoggedInContext(): Promise<{ browser: Browser; context: BrowserContext; page: Page }> {
   if (!env.feelcycleLoginUrl) {
     throw new Error("FEELCYCLE_LOGIN_URL is required");
   }
@@ -24,7 +24,7 @@ export async function createLoggedInContext(): Promise<{ context: BrowserContext
     await waitForEnter("Login manually in the opened browser, then press Enter here to continue");
   }
 
-  return { context, page };
+  return { browser, context, page };
 }
 
 async function tryAutoLogin(page: Page, email: string, password: string): Promise<void> {
