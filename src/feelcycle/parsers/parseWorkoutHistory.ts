@@ -20,6 +20,7 @@ export function parseWorkoutHistory(html: string): WorkoutInput[] {
     const programText = clean(root.find(".underline").first().text());
     const instructorText = clean(root.find(".instructor").first().text());
     const studioText = clean(root.find(".tenpo").first().text()).replace(/^＠/, "");
+    const ticketText = clean(root.find(".ticket_type").first().text());
 
     const dateMatch = dateText.match(/(\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/);
     const timeMatch = timeText.match(/(\d{1,2}:\d{2})/);
@@ -30,6 +31,8 @@ export function parseWorkoutHistory(html: string): WorkoutInput[] {
       program: programText || extractProgram(text),
       instructorName: instructorText,
       startTime: timeMatch?.[1] ?? "00:00",
+      ticketKind: ticketText,
+      specialTicketLabel: ticketText,
       intensity: "",
       subjectiveMemo: "",
       conditionMemo: ""
