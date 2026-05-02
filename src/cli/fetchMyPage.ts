@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { env } from "../config/env.js";
 import { fetchMyPageWorkouts } from "../feelcycle/fetchers/fetchMyPageWorkouts.js";
 import { normalizeWorkoutInput } from "../feelcycle/normalizers/normalizeWorkoutInput.js";
 import { parseWorkoutHistory } from "../feelcycle/parsers/parseWorkoutHistory.js";
@@ -16,25 +17,37 @@ async function main(): Promise<void> {
     return [record.id, record] as const;
   })).values()];
 
-  await fs.mkdir(path.resolve(process.cwd(), "data"), { recursive: true });
-  await fs.writeFile(
-    path.resolve(process.cwd(), "data", "feelcycle-history.json"),
-    JSON.stringify(snapshots.map((snapshot) => ({ monthLabel: snapshot.monthLabel })), null, 2),
-    "utf8"
-  );
-  if (snapshots[0]) {
-    await fs.writeFile(path.resolve(process.cwd(), "data", "feelcycle-history.html"), snapshots[0].html, "utf8");
-  }
-  for (const [index, snapshot] of snapshots.entries()) {
-    const safeMonthLabel = snapshot.monthLabel.replace(/[^\dA-Za-z\u3040-\u30ff\u4e00-\u9faf]+/g, "-");
+  if (env.feelcycleSaveSnapshots) {
+    console.info("[feelcycle] saving HTML snapshots to data/");
+    await fs.mkdir(path.resolve(process.cwd(), "data"), { recursive: true });
     await fs.writeFile(
-      path.resolve(process.cwd(), "data", `feelcycle-history-${String(index + 1).padStart(2, "0")}-${safeMonthLabel}.html`),
-      snapshot.html,
+      path.resolve(process.cwd(), "data", "feelcycle-history.json"),
+      JSON.stringify(snapshots.map((snapshot) => ({ monthLabel: snapshot.monthLabel })), null, 2),
       "utf8"
     );
+    if (snapshots[0]) {
+      await fs.writeFile(path.resolve(process.cwd(), "data", "feelcycle-history.html"), snapshots[0].html, "utf8");
+    }
+    for (const [index, snapshot] of snapshots.entries()) {
+      const safeMonthLabel = snapshot.monthLabel.replace(/[^\dA-Za-z\u3040-\u30ff\u4e00-\u9faf]+/g, "-");
+      await fs.writeFile(
+        path.resolve(process.cwd(), "data", `feelcycle-history-${String(index + 1).padStart(2, "0")}-${safeMonthLabel}.html`),
+        snapshot.html,
+        "utf8"
+      );
+    }
+  } else {
+    console.info("[feelcycle] skipping HTML snapshot export");
   }
 
-  await new FileWorkoutRepository().saveMany(records);
+  if (env.feelcycleSaveLocalRecords) {
+    console.info("[feelcycle] saving local JSONL records");
+    await new FileWorkoutRepository().saveMany(records);
+  } else {
+    console.info("[feelcycle] skipping local JSONL export");
+  }
+
+  console.info("[feelcycle] syncing records to Supabase");
   await new SupabaseWorkoutRepository().saveMany(records);
 
   console.log(

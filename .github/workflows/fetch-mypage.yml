@@ -41,4 +41,6 @@ jobs:
           FEELCYCLE_HEADLESS: "true"
           FEELCYCLE_MANUAL_LOGIN: "false"
           FEELCYCLE_HISTORY_MONTHS: ${{ secrets.FEELCYCLE_HISTORY_MONTHS }}
+          FEELCYCLE_SAVE_SNAPSHOTS: "false"
+          FEELCYCLE_SAVE_LOCAL_RECORDS: "false"
         run: npm run dev:fetch-mypage

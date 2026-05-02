@@ -21,5 +21,7 @@ export const env = {
   feelcycleHistoryUrl: process.env.FEELCYCLE_HISTORY_URL ?? "",
   feelcycleHeadless: process.env.FEELCYCLE_HEADLESS !== "false",
   feelcycleManualLogin: process.env.FEELCYCLE_MANUAL_LOGIN === "true",
-  feelcycleHistoryMonths: Number.parseInt(process.env.FEELCYCLE_HISTORY_MONTHS ?? "12", 10)
+  feelcycleHistoryMonths: Number.parseInt(process.env.FEELCYCLE_HISTORY_MONTHS ?? "12", 10),
+  feelcycleSaveSnapshots: process.env.FEELCYCLE_SAVE_SNAPSHOTS !== "false",
+  feelcycleSaveLocalRecords: process.env.FEELCYCLE_SAVE_LOCAL_RECORDS !== "false"
 };
