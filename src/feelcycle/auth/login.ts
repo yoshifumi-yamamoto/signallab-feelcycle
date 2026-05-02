@@ -8,7 +8,7 @@ export async function createLoggedInContext(): Promise<{ context: BrowserContext
     throw new Error("FEELCYCLE_LOGIN_URL is required");
   }
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: env.feelcycleHeadless });
   const context = await browser.newContext();
   const page = await context.newPage();
 

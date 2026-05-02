@@ -19,6 +19,7 @@ export const env = {
   feelcyclePassword: process.env.FEELCYCLE_PASSWORD,
   feelcycleLoginUrl: process.env.FEELCYCLE_LOGIN_URL ?? "",
   feelcycleHistoryUrl: process.env.FEELCYCLE_HISTORY_URL ?? "",
+  feelcycleHeadless: process.env.FEELCYCLE_HEADLESS !== "false",
   feelcycleManualLogin: process.env.FEELCYCLE_MANUAL_LOGIN === "true",
   feelcycleHistoryMonths: Number.parseInt(process.env.FEELCYCLE_HISTORY_MONTHS ?? "12", 10)
 };
