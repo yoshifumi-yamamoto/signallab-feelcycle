@@ -47,7 +47,29 @@ async function tryAutoLogin(page: Page, email: string, password: string): Promis
   if ((await submitButton.count()) > 0) {
     console.info("[feelcycle] submitting login form");
     await submitButton.click();
-    await page.waitForLoadState("domcontentloaded", { timeout: 10000 }).catch(() => undefined);
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => undefined);
+    await waitForPostLoginTransition(page);
+  }
+}
+
+async function waitForPostLoginTransition(page: Page): Promise<void> {
+  for (let index = 0; index < 30; index += 1) {
+    const url = page.url();
+    const title = await page.title().catch(() => "");
+    const bodyText = (await page.locator("body").textContent().catch(() => "")) ?? "";
+    const normalizedBodyText = bodyText.replace(/\s+/g, " ").trim();
+
+    const isLoggedInPage = url.includes("/mypage")
+      || title.includes("MYPAGE")
+      || normalizedBodyText.includes("受講履歴")
+      || normalizedBodyText.includes("予約状況");
+    const stillOnLoginForm = (await page.locator("input[type='password']").count().catch(() => 0)) > 0;
+
+    if (isLoggedInPage && !stillOnLoginForm) {
+      await page.waitForTimeout(1500);
+      return;
+    }
+
+    await page.waitForTimeout(500);
   }
 }

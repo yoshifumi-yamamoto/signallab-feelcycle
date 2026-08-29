@@ -33,17 +33,17 @@ async function openHistoryPage(page: import("playwright").Page): Promise<void> {
   const currentUrl = page.url();
   if (currentUrl.startsWith(env.feelcycleHistoryUrl)) {
     console.info("[feelcycle] already on history host page");
+    await ensureMyPageReady(page);
     return;
   }
 
   console.info("[feelcycle] opening history page");
-  await page.goto(env.feelcycleHistoryUrl, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => undefined);
-  await page.waitForLoadState("domcontentloaded", { timeout: 10000 }).catch(() => undefined);
-  await waitForMyPageReady(page);
+  await gotoHistoryPage(page);
+  await ensureMyPageReady(page);
 }
 
 async function openHistoryTab(page: import("playwright").Page): Promise<void> {
-  await waitForMyPageReady(page);
+  await ensureMyPageReady(page);
 
   const historyTab = page
     .locator("ul.toggleTab2 > li")
@@ -237,21 +237,6 @@ async function waitForHistoryTabActivation(page: import("playwright").Page): Pro
   throw new Error("History tab did not become active");
 }
 
-async function waitForMyPageReady(page: import("playwright").Page): Promise<void> {
-  for (let index = 0; index < 20; index += 1) {
-    const hasTabs = await page.locator("ul.toggleTab2 > li").count().catch(() => 0);
-    const hasUser = await page.locator(".user_name").count().catch(() => 0);
-
-    if (hasTabs > 0 && hasUser > 0) {
-      return;
-    }
-
-    await page.waitForTimeout(500);
-  }
-
-  throw new Error("FEELCYCLE my page UI did not finish loading");
-}
-
 async function isHistoryPanelVisible(page: import("playwright").Page): Promise<boolean> {
   return page.evaluate(() => {
     const windowRef = (globalThis as any).window;
@@ -273,6 +258,59 @@ async function isHistoryPanelVisible(page: import("playwright").Page): Promise<b
 
     return candidates.some((element) => isVisibleElement(element));
   }).catch(() => false);
+}
+
+async function gotoHistoryPage(page: import("playwright").Page): Promise<void> {
+  await page.goto(env.feelcycleHistoryUrl, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => undefined);
+  await page.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => undefined);
+  await page.waitForTimeout(1000);
+}
+
+async function ensureMyPageReady(page: import("playwright").Page): Promise<void> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (await waitForMyPageReady(page)) {
+      return;
+    }
+
+    if (attempt === 0) {
+      console.info("[feelcycle] reloading history page after incomplete my page render");
+      await gotoHistoryPage(page);
+    }
+  }
+
+  const diagnostics = await collectPageDiagnostics(page);
+  throw new Error(`FEELCYCLE my page UI did not finish loading: ${diagnostics}`);
+}
+
+async function waitForMyPageReady(page: import("playwright").Page): Promise<boolean> {
+  for (let index = 0; index < 30; index += 1) {
+    const hasTabs = await page.locator("ul.toggleTab2 > li").count().catch(() => 0);
+    const bodyText = ((await page.locator("body").textContent().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+    const title = await page.title().catch(() => "");
+    const hasMyPageTitle = title.includes("MYPAGE") || bodyText.includes("MY PAGE");
+    const hasHistoryLabels = bodyText.includes("受講履歴") && bodyText.includes("予約状況");
+
+    if (hasTabs >= 2 || (hasMyPageTitle && hasHistoryLabels)) {
+      return true;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  return false;
+}
+
+async function collectPageDiagnostics(page: import("playwright").Page): Promise<string> {
+  const url = page.url();
+  const title = await page.title().catch(() => "");
+  const bodyText = ((await page.locator("body").textContent().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+  const preview = bodyText.slice(0, 160);
+
+  return JSON.stringify({
+    url,
+    title,
+    bodyPreview: preview
+  });
 }
 
 async function readVisibleText(
