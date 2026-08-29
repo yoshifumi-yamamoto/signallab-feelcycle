@@ -17,6 +17,15 @@ async function main(): Promise<void> {
     return [record.id, record] as const;
   })).values()];
 
+  if (snapshots.length === 0) {
+    throw new Error("FEELCYCLE my page fetch returned no snapshots");
+  }
+
+  if (records.length === 0) {
+    const labels = snapshots.map((snapshot) => snapshot.monthLabel).join(", ");
+    throw new Error(`FEELCYCLE my page fetch returned 0 records. Captured months: ${labels || "(none)"}`);
+  }
+
   if (env.feelcycleSaveSnapshots) {
     console.info("[feelcycle] saving HTML snapshots to data/");
     await fs.mkdir(path.resolve(process.cwd(), "data"), { recursive: true });
