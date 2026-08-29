@@ -44,6 +44,7 @@ async function openHistoryPage(page: import("playwright").Page): Promise<void> {
 
 async function openHistoryTab(page: import("playwright").Page): Promise<void> {
   await ensureMyPageReady(page);
+  await waitForHistoryTabsReady(page);
 
   const historyTab = page
     .locator("ul.toggleTab2 > li")
@@ -59,10 +60,18 @@ async function openHistoryTab(page: import("playwright").Page): Promise<void> {
     return;
   }
 
-  console.info("[feelcycle] switching to history tab");
-  await historyTab.click().catch(() => undefined);
-  await waitForHistoryTabActivation(page);
-  await page.waitForTimeout(1200);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    console.info(`[feelcycle] switching to history tab (attempt ${attempt + 1})`);
+    await historyTab.click({ force: true }).catch(() => undefined);
+    if (await waitForHistoryTabActivation(page, 8)) {
+      await waitForHistoryMonthLabel(page);
+      return;
+    }
+
+    await page.waitForTimeout(1500);
+  }
+
+  throw new Error("History tab did not become active");
 }
 
 async function collectHistoryPages(
@@ -74,6 +83,7 @@ async function collectHistoryPages(
 
   for (let index = 0; index < maxMonths; index += 1) {
     await expandAllHistoryRows(page);
+    await waitForHistoryMonthLabel(page);
     const state = await readCurrentState(page);
     if (!state.monthLabel || state.monthLabel.startsWith("month-")) {
       throw new Error("Failed to detect FEELCYCLE history month label");
@@ -92,8 +102,7 @@ async function collectHistoryPages(
     });
 
     if (state.recordCount === 0) {
-      console.info("[feelcycle] reached empty month, stopping history traversal");
-      break;
+      console.info("[feelcycle] current month is empty, continuing to previous month");
     }
 
     const moved = await goToPreviousMonth(page, state);
@@ -125,9 +134,29 @@ async function expandAllHistoryRows(page: import("playwright").Page): Promise<vo
 }
 
 async function readCurrentMonth(page: import("playwright").Page): Promise<string> {
-  const text = await readVisibleText(page, [".month .justify-center", ".month .flex.white--text"]);
+  const primaryMonthLocator = page.locator(".month .flex.white--text").filter({ visible: true });
+  if ((await primaryMonthLocator.count().catch(() => 0)) > 0) {
+    const text = ((await primaryMonthLocator.first().textContent().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+    if (text) {
+      return text;
+    }
+  }
 
-  return (text ?? "").replace(/\s+/g, " ").trim() || `month-${Date.now()}`;
+  const fallbackMonthLocator = page.locator(".month .justify-center").filter({ visible: true });
+  if ((await fallbackMonthLocator.count().catch(() => 0)) > 0) {
+    const text = ((await fallbackMonthLocator.first().textContent().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+    if (text) {
+      return text;
+    }
+  }
+
+  const firstDateText = await readVisibleDateText(page);
+  const dateMatch = (firstDateText ?? "").match(/(\d{4})[\/-](\d{1,2})[\/-]\d{1,2}/);
+  if (dateMatch) {
+    return `${dateMatch[1]}年${Number.parseInt(dateMatch[2] ?? "0", 10)}月`;
+  }
+
+  return `month-${Date.now()}`;
 }
 
 async function readCurrentState(page: import("playwright").Page): Promise<HistoryViewState> {
@@ -218,23 +247,31 @@ async function waitForMonthChange(
   }
 }
 
-async function waitForHistoryTabActivation(page: import("playwright").Page): Promise<void> {
+async function waitForHistoryTabActivation(
+  page: import("playwright").Page,
+  attempts = 20
+): Promise<boolean> {
   const historyTab = page
     .locator("ul.toggleTab2 > li")
     .filter({ hasText: "受講履歴" })
     .first();
 
-  for (let index = 0; index < 20; index += 1) {
+  for (let index = 0; index < attempts; index += 1) {
     const classes = (await historyTab.getAttribute("class").catch(() => "")) ?? "";
+    if (classes.includes("active")) {
+      return true;
+    }
+
     const monthLabel = await readCurrentMonth(page);
-    if (classes.includes("active") && await isHistoryPanelVisible(page) && !monthLabel.startsWith("month-")) {
-      return;
+    const hasHistoryControls = await hasVisibleHistoryControls(page);
+    if (hasHistoryControls && !monthLabel.startsWith("month-")) {
+      return true;
     }
 
     await page.waitForTimeout(500);
   }
 
-  throw new Error("History tab did not become active");
+  return false;
 }
 
 async function isHistoryPanelVisible(page: import("playwright").Page): Promise<boolean> {
@@ -257,6 +294,29 @@ async function isHistoryPanelVisible(page: import("playwright").Page): Promise<b
     ];
 
     return candidates.some((element) => isVisibleElement(element));
+  }).catch(() => false);
+}
+
+async function hasVisibleHistoryControls(page: import("playwright").Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const windowRef = (globalThis as any).window;
+    const documentRef = (globalThis as any).document;
+    const isVisibleElement = (element: any): boolean => {
+      const style = windowRef.getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden") {
+        return false;
+      }
+
+      return element.getClientRects().length > 0;
+    };
+
+    const controls = [
+      ...documentRef.querySelectorAll(".thisMonth"),
+      ...documentRef.querySelectorAll(".month .prevMonth"),
+      ...documentRef.querySelectorAll(".month .flex.white--text")
+    ];
+
+    return controls.some((element) => isVisibleElement(element));
   }).catch(() => false);
 }
 
@@ -313,6 +373,37 @@ async function collectPageDiagnostics(page: import("playwright").Page): Promise<
   });
 }
 
+async function waitForHistoryTabsReady(page: import("playwright").Page): Promise<void> {
+  for (let index = 0; index < 20; index += 1) {
+    const tabCount = await page.locator("ul.toggleTab2 > li").count().catch(() => 0);
+    const historyText = await page
+      .locator("ul.toggleTab2 > li")
+      .filter({ hasText: "受講履歴" })
+      .first()
+      .textContent()
+      .catch(() => null);
+
+    if (tabCount >= 2 && (historyText ?? "").includes("受講履歴")) {
+      await page.waitForTimeout(5000);
+      return;
+    }
+
+    await page.waitForTimeout(500);
+  }
+}
+
+async function waitForHistoryMonthLabel(page: import("playwright").Page): Promise<void> {
+  for (let index = 0; index < 20; index += 1) {
+    const monthLabel = await readCurrentMonth(page);
+    if (!monthLabel.startsWith("month-")) {
+      await page.waitForTimeout(800);
+      return;
+    }
+
+    await page.waitForTimeout(500);
+  }
+}
+
 async function readVisibleText(
   page: import("playwright").Page,
   selectors: string[]
@@ -345,4 +436,33 @@ async function readVisibleText(
 
     return null;
   }, selectors).catch(() => null);
+}
+
+async function readVisibleDateText(page: import("playwright").Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const windowRef = (globalThis as any).window;
+    const documentRef = (globalThis as any).document;
+    const isVisibleElement = (element: any): boolean => {
+      const style = windowRef.getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden") {
+        return false;
+      }
+
+      return element.getClientRects().length > 0;
+    };
+
+    const texts = [...documentRef.querySelectorAll(".box_wrap.box-4 .text_bold_500")];
+    for (const element of texts) {
+      if (!isVisibleElement(element)) {
+        continue;
+      }
+
+      const text = element.textContent?.replace(/\s+/g, " ").trim() ?? "";
+      if (/^\d{4}[\/-]\d{1,2}[\/-]\d{1,2}/.test(text)) {
+        return text;
+      }
+    }
+
+    return null;
+  }).catch(() => null);
 }
