@@ -66,7 +66,7 @@ export function classifyProgram(program: string): ProgramClassification {
     };
   }
 
-  if (normalized === "BEERCYCLE" || normalized === "10th SP") {
+  if (normalized === "BEERCYCLE" || /^\d+(?:st|nd|rd|th) SP$/.test(normalized)) {
     return {
       lessonKind: "event",
       programFamily: "event",
@@ -82,6 +82,17 @@ export function classifyProgram(program: string): ProgramClassification {
       lessonKind: "event",
       programFamily: "event",
       programSeries: "FEEL HIGH",
+      programVariant: null,
+      programVersion: normalized.match(/(\d+)$/)?.[1] ? Number.parseInt(normalized.match(/(\d+)$/)?.[1] ?? "0", 10) : null,
+      parseRule: "event_series_version"
+    };
+  }
+
+  if (/^FEEL DEEP(?: \d+)?$/.test(normalized)) {
+    return {
+      lessonKind: "event",
+      programFamily: "event",
+      programSeries: "FEEL DEEP",
       programVariant: null,
       programVersion: normalized.match(/(\d+)$/)?.[1] ? Number.parseInt(normalized.match(/(\d+)$/)?.[1] ?? "0", 10) : null,
       parseRule: "event_series_version"

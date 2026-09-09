@@ -164,7 +164,7 @@ function renderHistoryHtml(records: LessonHistoryEntry[]): string {
       '<div class="box_wrap box-4">',
       `<div class="text_bold_500">${escapeHtml(toText(record.shift_date))}</div>`,
       `<div class="text_bold_500 mb05">${escapeHtml(toText(record.ls_st))}</div>`,
-      `<div class="underline">${escapeHtml(toText(record.program_search))}</div>`,
+      `<div class="underline">${escapeHtml(toText(record.iname ?? record.program_search))}</div>`,
       `<div class="instructor">${escapeHtml(instructor)}</div>`,
       `<div class="tenpo">＠${escapeHtml(toText(record.store_name))}</div>`,
       `<div class="ticket_type">${escapeHtml(toText(record.ticket_name))}</div>`,
