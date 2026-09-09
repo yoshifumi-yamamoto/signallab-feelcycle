@@ -12,6 +12,9 @@
     "dev:import-csv": "tsx src/cli/importCsv.ts",
     "dev:fetch-mypage": "tsx src/cli/fetchMyPage.ts",
     "dev:sync-lesson-master": "tsx src/cli/syncLessonMaster.ts",
+    "dev:capture-official-schedule": "tsx src/cli/captureOfficialSchedule.ts",
+    "dev:capture-official-instructors": "tsx src/cli/captureOfficialInstructors.ts",
+    "dev:import-official-schedule": "tsx src/cli/importOfficialSchedule.ts",
     "dev:summary": "tsx src/cli/showSummary.ts",
     "check": "tsc --noEmit -p tsconfig.json"
   },
