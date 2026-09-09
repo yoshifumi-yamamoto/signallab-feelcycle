@@ -13,8 +13,11 @@
     "dev:fetch-mypage": "tsx src/cli/fetchMyPage.ts",
     "dev:sync-lesson-master": "tsx src/cli/syncLessonMaster.ts",
     "dev:capture-official-schedule": "tsx src/cli/captureOfficialSchedule.ts",
+    "dev:capture-official-history-store": "tsx src/cli/captureOfficialScheduleStore.ts",
     "dev:capture-official-instructors": "tsx src/cli/captureOfficialInstructors.ts",
     "dev:import-official-schedule": "tsx src/cli/importOfficialSchedule.ts",
+    "dev:import-official-history": "tsx src/cli/importOfficialHistory.ts",
+    "dev:validate-official-history": "tsx src/cli/validateOfficialHistory.ts",
     "dev:summary": "tsx src/cli/showSummary.ts",
     "check": "tsc --noEmit -p tsconfig.json"
   },
