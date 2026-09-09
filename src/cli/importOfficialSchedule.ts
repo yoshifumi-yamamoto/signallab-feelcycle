@@ -155,8 +155,35 @@ async function main(): Promise<void> {
   await upsert("feelcycle_lessons", [...lessons.values()], "id");
   await upsert("feelcycle_instructors", [...instructors.values()], "id");
   await upsert("feelcycle_instructor_studios", [...instructorStudios.values()], "instructor_id,store_id");
-  await upsert("feelcycle_schedule_occurrences", [...occurrences.values()], "schedule_id,instructor_id");
-  console.log(JSON.stringify({ studios: studios.size, lessons: lessons.size, instructors: instructors.size, instructorStudios: instructorStudios.size, occurrences: occurrences.size }, null, 2));
+  const occurrenceRows = [...occurrences.values()];
+  await upsert("feelcycle_schedule_occurrences", occurrenceRows, "schedule_id,instructor_id");
+
+  let historyProcessed = 0;
+  let historySkipped = 0;
+  for (let index = 0; index < occurrenceRows.length; index += 250) {
+    const entries = occurrenceRows.slice(index, index + 250).map((row) => ({
+      schedule_id: row.schedule_id,
+      instructor_id: row.instructor_id,
+      lesson_id: row.lesson_id,
+      store_id: row.store_id,
+      lesson_date: row.lesson_date,
+      lesson_start: row.lesson_start
+    }));
+    const { data, error } = await client.rpc("apply_feelcycle_history_occurrences", { entries });
+    if (error) throw error;
+    const result = data as { processed?: number; skipped?: number } | null;
+    historyProcessed += result?.processed ?? 0;
+    historySkipped += result?.skipped ?? 0;
+  }
+
+  console.log(JSON.stringify({
+    studios: studios.size,
+    lessons: lessons.size,
+    instructors: instructors.size,
+    instructorStudios: instructorStudios.size,
+    occurrences: occurrences.size,
+    history: { processed: historyProcessed, skipped: historySkipped }
+  }, null, 2));
 }
 
 function stableId(type: string, value: string): string {
