@@ -1,0 +1,11 @@
+import { SupabaseLessonMasterRepository } from "../storage/supabaseLessonMasterRepository.js";
+
+async function main(): Promise<void> {
+  const result = await new SupabaseLessonMasterRepository().syncFromWorkoutHistory();
+  console.log(JSON.stringify(result, null, 2));
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

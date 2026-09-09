@@ -11,6 +11,7 @@
     "dev:add": "tsx src/cli/addRecord.ts",
     "dev:import-csv": "tsx src/cli/importCsv.ts",
     "dev:fetch-mypage": "tsx src/cli/fetchMyPage.ts",
+    "dev:sync-lesson-master": "tsx src/cli/syncLessonMaster.ts",
     "dev:summary": "tsx src/cli/showSummary.ts",
     "check": "tsc --noEmit -p tsconfig.json"
   },

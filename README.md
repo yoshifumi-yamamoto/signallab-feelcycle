@@ -38,7 +38,27 @@ npm install
 npm run dev:add
 npm run dev:import-csv -- ./imports/example-feelcycle.csv
 npm run dev:fetch-mypage
+npm run dev:sync-lesson-master
 npm run dev:summary
+```
+
+## レッスンマスタ
+
+`feelcycle_lessons`、`feelcycle_instructors`、`feelcycle_lesson_instructors` は、レッスンとインストラクターの対応を保持します。
+対応は固定の所有関係ではなく、受講履歴または予約スケジュールで確認できた担当実績として保存します。
+
+最初に Supabase マイグレーションを適用します。
+
+```bash
+supabase login
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+続けて既存の受講履歴からマスタを投入します。
+
+```bash
+npm run dev:sync-lesson-master
 ```
 
 ## GitHub Actions
