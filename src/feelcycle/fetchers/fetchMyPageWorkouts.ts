@@ -193,6 +193,10 @@ function toText(value: unknown): string {
   }
 
   if (value && typeof value === "object") {
+    if ("name" in value) {
+      return toText((value as { name?: unknown }).name);
+    }
+
     return Object.values(value).map(toText).filter(Boolean).join(" ");
   }
 

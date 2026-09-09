@@ -52,5 +52,75 @@ export class SupabaseWorkoutRepository {
     if (error) {
       throw error;
     }
+
+    await this.removeSupersededFeelcycleRows(records);
   }
+
+  private async removeSupersededFeelcycleRows(records: WorkoutRecord[]): Promise<void> {
+    const canonicalIdsByLesson = new Map(
+      records.map((record) => [lessonKey(record.date, record.startTime, record.studio), record.id])
+    );
+    const rows: StoredWorkoutIdentity[] = [];
+
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await this.client
+        .from("feelcycle_workouts")
+        .select("id,workout_date,start_time,studio")
+        .like("id", "feelcycle:%")
+        .range(from, from + 999);
+
+      if (error) {
+        throw error;
+      }
+
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) {
+        break;
+      }
+    }
+
+    const staleIds = rows
+      .filter((row) => {
+        const canonicalId = canonicalIdsByLesson.get(
+          lessonKey(row.workout_date, row.start_time, row.studio)
+        );
+        return canonicalId !== undefined && row.id !== canonicalId;
+      })
+      .map((row) => row.id);
+
+    for (const ids of chunk(staleIds, 100)) {
+      const { error } = await this.client.from("feelcycle_workouts").delete().in("id", ids);
+      if (error) {
+        throw error;
+      }
+    }
+
+    if (staleIds.length > 0) {
+      console.info(`[feelcycle] removed ${staleIds.length} superseded duplicate records`);
+    }
+  }
+}
+
+interface StoredWorkoutIdentity {
+  id: string;
+  workout_date: string;
+  start_time: string;
+  studio: string;
+}
+
+function lessonKey(date: string, startTime: string, studio: string): string {
+  return [
+    date,
+    startTime.slice(0, 5),
+    studio.trim()
+  ].join("\u0000");
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
 }
