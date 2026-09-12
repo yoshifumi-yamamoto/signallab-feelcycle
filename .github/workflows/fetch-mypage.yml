@@ -46,7 +46,14 @@ jobs:
         run: npm run dev:fetch-mypage
 
       - name: Capture official schedule
-        run: npm run dev:capture-official-schedule
+        run: |
+          for attempt in 1 2 3; do
+            npm run dev:capture-official-schedule && exit 0
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 10))
+            fi
+          done
+          exit 1
 
       - name: Capture official instructors
         run: npm run dev:capture-official-instructors

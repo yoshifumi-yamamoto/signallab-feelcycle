@@ -20,35 +20,30 @@ async function captureAndWrite(): Promise<void> {
     await page.waitForTimeout(500);
 
     const headers = page.locator(".v-expansion-panel__header");
+    const storeIds: number[] = [];
     for (let index = 1, count = await headers.count(); index < count; index += 1) {
-      await headers.nth(index).locator(".v-expansion-panel__header__icon").click();
-      await page.locator(".v-expansion-panel__body").nth(index).waitFor({ state: "visible" });
-      const labels = page.locator(".v-expansion-panel__body").nth(index).locator("label.checkbox_wrap");
+      const body = page.locator(".v-expansion-panel__body").nth(index);
+      if (!(await body.isVisible())) {
+        await headers.nth(index).locator(".v-expansion-panel__header__icon").click();
+        await body.waitFor({ state: "visible" });
+      }
+      const labels = body.locator("label.checkbox_wrap");
       for (let labelIndex = 0, labelCount = await labels.count(); labelIndex < labelCount; labelIndex += 1) {
-        const label = labels.nth(labelIndex);
-        if (!(await label.locator("input[value]").isChecked())) await label.click();
+        const value = await labels.nth(labelIndex).locator("input[value]").getAttribute("value");
+        const storeId = Number.parseInt(value ?? "", 10);
+        if (Number.isInteger(storeId) && !storeIds.includes(storeId)) storeIds.push(storeId);
       }
     }
-
-    let selectedResponse: ScheduleResponse | undefined;
-    page.on("response", async (response) => {
-      if (isScheduleResponse(response)) selectedResponse = await readScheduleResponse(response);
-    });
-    await page.locator(".btn.complete").evaluate((node) => (node as unknown as { click(): void }).click());
-    await page.waitForTimeout(3000);
-    selectedStores = selectedResponse?.shujiku_tab ?? [];
-    if (selectedStores.length < 30) throw new Error(`Store selection was incomplete: ${selectedStores.length}`);
+    if (storeIds.length < 30) throw new Error(`Store discovery was incomplete: ${storeIds.length}`);
 
     const startingDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-    for (const store of selectedStores) {
-      const response = await page.evaluate(async ({ storeId, date }) => {
-        const params = new URLSearchParams({ mode: "2", shujiku_type: "1", get_direction: "1", get_starting_date: date, trial_lesson: "0" });
-        params.append("search_store[]", String(storeId));
-        const result = await fetch(`/api/reserve/lesson_calendar?${params.toString()}`);
-        if (!result.ok) throw new Error(`Schedule API failed with ${result.status}`);
-        return result.json();
-      }, { storeId: store.id, date: startingDate }) as ScheduleResponse;
+    for (const storeId of storeIds) {
+      const response = await fetchStoreSchedule(page, storeId, startingDate);
       responses.push(response);
+    }
+    selectedStores = responses.flatMap((response) => response.shujiku_tab ?? []);
+    if (new Set(selectedStores.map((store) => store.id)).size !== storeIds.length) {
+      throw new Error(`Store metadata was incomplete: expected ${storeIds.length}, received ${selectedStores.length}`);
     }
 
   } finally {
@@ -83,14 +78,27 @@ async function main(): Promise<void> {
   }
 }
 
-function isScheduleResponse(response: import("playwright").Response): boolean {
-  return response.url().includes("/api/reserve/lesson_calendar") && response.status() === 200;
-}
-
-async function readScheduleResponse(response: import("playwright").Response): Promise<ScheduleResponse> {
-  const body = await response.json() as ScheduleResponse;
-  if (body.result_code !== 0 || !body.lesson_list) throw new Error(`Invalid schedule response from ${response.url()}`);
-  return body;
+async function fetchStoreSchedule(page: import("playwright").Page, storeId: number, date: string): Promise<ScheduleResponse> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await page.evaluate(async ({ requestedStoreId, startingDate }) => {
+        const params = new URLSearchParams({ mode: "2", shujiku_type: "1", get_direction: "1", get_starting_date: startingDate, trial_lesson: "0" });
+        params.append("search_store[]", String(requestedStoreId));
+        const result = await fetch(`/api/reserve/lesson_calendar?${params.toString()}`);
+        if (!result.ok) throw new Error(`Schedule API failed with ${result.status}`);
+        return result.json();
+      }, { requestedStoreId: storeId, startingDate: date }) as ScheduleResponse;
+      if (response.result_code !== 0 || !response.lesson_list || response.shujiku_tab?.[0]?.id !== storeId) {
+        throw new Error(`Invalid schedule response for store ${storeId}`);
+      }
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await page.waitForTimeout(attempt * 500);
+    }
+  }
+  throw lastError;
 }
 
 await main().catch((error) => { console.error(error); process.exitCode = 1; });
