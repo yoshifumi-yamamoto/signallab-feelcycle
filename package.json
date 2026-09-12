@@ -17,6 +17,7 @@
     "dev:capture-official-instructors": "tsx src/cli/captureOfficialInstructors.ts",
     "dev:import-official-schedule": "tsx src/cli/importOfficialSchedule.ts",
     "dev:import-official-history": "tsx src/cli/importOfficialHistory.ts",
+    "dev:backfill-history-ledger": "tsx src/cli/backfillHistoryLedger.ts",
     "dev:validate-official-history": "tsx src/cli/validateOfficialHistory.ts",
     "dev:summary": "tsx src/cli/showSummary.ts",
     "check": "tsc --noEmit -p tsconfig.json"
