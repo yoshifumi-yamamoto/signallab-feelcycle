@@ -176,13 +176,17 @@ async function main(): Promise<void> {
     historySkipped += result?.skipped ?? 0;
   }
 
+  const { error: refreshError } = await client.rpc("refresh_feelcycle_catalogue_summaries");
+  if (refreshError) throw refreshError;
+
   console.log(JSON.stringify({
     studios: studios.size,
     lessons: lessons.size,
     instructors: instructors.size,
     instructorStudios: instructorStudios.size,
     occurrences: occurrences.size,
-    history: { processed: historyProcessed, skipped: historySkipped }
+    history: { processed: historyProcessed, skipped: historySkipped },
+    catalogueSummariesRefreshed: true
   }, null, 2));
 }
 
